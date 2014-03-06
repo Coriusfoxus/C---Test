@@ -1,4 +1,4 @@
-(COMPILER)=g++
+COMPILER=g++
 
 test: test.cpp
-	g++ test.cpp -o test
+	$(COMPILER) test.cpp -o test
