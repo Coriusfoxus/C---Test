@@ -18,6 +18,7 @@ const char kSnakeTile = '*';
 const char kFoodTile = '$';
 const double kWaitTime = 0.1;
 const string kClearCommand = "clear";
+const double kTurnRate = 0.2;
 
 struct pointT
 {
@@ -35,6 +36,7 @@ struct gameT
 	int numEaten;
 };
 
+/* Local Function */
 void InitializeGame(gameT &game);
 void RunSimulation(gameT &game);
 void OpenUserFile(ifstream &input);
@@ -44,6 +46,10 @@ string GetLine();
 void Pause();
 void PrintWorld(gameT &game);
 void DisplayResult(gameT &game);
+void PerformAI(gameT &game);
+pointT GetNextPosition(gameT &game);
+bool InWorld(pointT& pt, gameT& game);
+bool RandomChance(double probability);
 
 int main()
 {
@@ -57,6 +63,8 @@ int main()
 void InitializeGame(gameT &game)
 {
 	cout << "Initialize game" << endl;
+	srand(static_cast<unsigned int>(time(NULL)));
+
 	ifstream input;
 	OpenUserFile(input);
 	LoadWorld(game, input);
@@ -70,12 +78,12 @@ void RunSimulation(gameT &game)
 	while(game.numEaten < kMaxFood)
 	{
 		PrintWorld(game);
-		//PerformAI(game);
+		PerformAI(game);
 
-        // if(!MoveSnake(game))
-		// {
-		// 	break;
-		// }
+         if(!MoveSnake(game))
+		 {
+			 break;
+		 }
 		Pause();
 	}
 	DisplayResult(game);
@@ -169,4 +177,46 @@ void DisplayResult(gameT& game)
 	{
 		cout << "Oh no! The snake crashed!" << endl;
 	}
+}
+
+void PerformAI(gameT &game)
+{
+	/* Figure out where we will be after we move this turn. */
+	pointT nextHead = GetNextPosition(game);
+
+	/* If that puts us into a wall or we randomly decide to, turn the snake. */
+	if(Crashed(nextHead, game) || RandomChance(kTurnRate))
+	{
+		
+	}
+}
+
+pointT GetNextPosition(gameT &game)
+{
+	/* Get the head position. */
+	pointT result = game.snake.front();
+	/* Increment the head position by the current direction */
+	result.row += game.dy;
+	result.col += game.dx;
+	return result;
+}
+
+bool Crashed(pointT headPos, gameT& game)
+{
+	return !InWorld(headPos, game) ||
+		game.world[headPos.row][headPos.col] == kSnakeTile ||
+		game.world[headPos.row][headPos.col] == kWallTile;
+}
+
+bool InWorld(pointT& pt, gameT& game)
+{
+	return (pt.col >= 0) &&
+		(pt.row >= 0) &&
+		(pt.col < game.numCols) &&
+		(pt.row < game.numRows);
+}
+
+bool RandomChance(double probability)
+{
+	return (rand() / (MAX_RAND + 1) < probability);
 }
