@@ -47,9 +47,12 @@ void Pause();
 void PrintWorld(gameT &game);
 void DisplayResult(gameT &game);
 void PerformAI(gameT &game);
-pointT GetNextPosition(gameT &game);
+pointT GetNextPosition(gameT &game, int dx, int dy);
 bool InWorld(pointT& pt, gameT& game);
 bool RandomChance(double probability);
+bool MoveSnake(gameT &game);
+void PlaceFood(gameT &game);
+bool Crashed(pointT headPos, gameT& game);
 
 int main()
 {
@@ -182,22 +185,42 @@ void DisplayResult(gameT& game)
 void PerformAI(gameT &game)
 {
 	/* Figure out where we will be after we move this turn. */
-	pointT nextHead = GetNextPosition(game);
+	pointT nextHead = GetNextPosition(game, game.dx, game.dy);
 
 	/* If that puts us into a wall or we randomly decide to, turn the snake. */
 	if(Crashed(nextHead, game) || RandomChance(kTurnRate))
 	{
-		
+		int leftDx = -game.dy;
+		int leftDy = game.dx;
+		int rightDx = game.dy;
+		int rightDy = -game.dx;
+
+		bool canLeft = !Crashed(GetNextPosition(game, leftDx, leftDy), game);
+		bool canRight = !Crashed(GetNextPosition(game, rightDx, rightDy), game);
+
+		bool willTurnLeft = false;
+		if(!canLeft && !canRight){
+			return;
+		}else if(canLeft && !canRight){
+			willTurnLeft = true;
+		}else if(!canLeft && canRight){
+			willTurnLeft = false;
+		}else if(canLeft && canRight){
+			willTurnLeft = RandomChance(0.5);
+		}
+
+		game.dx = willTurnLeft? leftDx: rightDx;
+		game.dy = willTurnLeft? leftDy: rightDy;
 	}
 }
 
-pointT GetNextPosition(gameT &game)
+pointT GetNextPosition(gameT &game, int dx, int dy)
 {
 	/* Get the head position. */
 	pointT result = game.snake.front();
 	/* Increment the head position by the current direction */
-	result.row += game.dy;
-	result.col += game.dx;
+	result.row += dy;
+	result.col += dx;
 	return result;
 }
 
@@ -218,5 +241,46 @@ bool InWorld(pointT& pt, gameT& game)
 
 bool RandomChance(double probability)
 {
-	return (rand() / (MAX_RAND + 1) < probability);
+	return (rand() / (RAND_MAX) < probability);
+}
+
+bool MoveSnake(gameT &game)
+{
+	pointT nextHead = GetNextPosition(game, game.dx, game.dy);
+	if(Crashed(nextHead, game))
+	{
+		return false;
+	}
+
+	bool isFood = (game.world[nextHead.row][nextHead.col] == kFoodTile);
+
+	game.world[nextHead.row][nextHead.col] = kSnakeTile;
+	game.snake.push_front(nextHead);
+
+	if(!isFood)
+	{
+		game.world[game.snake.back().row][game.snake.back().col] = kEmptyTile;
+		game.snake.pop_back();
+	}
+	else
+	{
+		++game.numEaten;
+		PlaceFood(game);
+	}
+	return true;
+}
+
+void PlaceFood(gameT& game)
+{
+	while(true)
+	{
+		int row = rand() % game.numRows;
+		int col = rand() % game.numCols;
+
+		if(game.world[row][col] == kEmptyTile)
+		{
+			game.world[row][col] = kFoodTile;
+			return;
+		}
+	}
 }
